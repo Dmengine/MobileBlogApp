@@ -1,75 +1,146 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React from 'react';
+import { Alert, StyleSheet, Text, View,} from 'react-native';
+import { Button, TextInput } from 'react-native-paper';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { Redirect, useRouter } from 'expo-router';
+import { Controller, useForm } from 'react-hook-form';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const index = () => {
+  const router = useRouter();
 
-export default function HomeScreen() {
+  const schema = z.object({
+    name: z.string().min(1, { message: "Name is required"}),
+    email: z.string().email({ message: "Invalid email address" }),
+    password: z.string().min(1, { message: "Password is required" }),
+  })
+
+  type formSchemaType = z.infer<typeof schema>;
+  const {
+    handleSubmit,
+    control,
+    formState: { errors},
+  } = useForm<formSchemaType>({
+    resolver: zodResolver(schema),})
+
+    const onSubmit = async (regData: formSchemaType) => {
+    console.log('Reg Data:', regData);
+    try {
+      const response = await fetch('http://192.168.0.115:9000/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: regData.name,
+          email: regData.email,
+          password: regData.password,
+        })
+      })
+      const data = await response.json();
+      console.log('Registration successful:', data);
+      if(data.success === true) {
+        await AsyncStorage.setItem('token', JSON.stringify(data.token));
+        await AsyncStorage.setItem('user', JSON.stringify(data.data));
+        Alert.alert('Registration successful');
+        router.push('/(auth)/Login');
+      }
+      else {
+        Alert.alert('Registration failed', data.message || 'Please try again');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      Alert.alert('Registration failed', 'An error occurred. Please try again.');
+    }
+    }
+
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+    <SafeAreaProvider style={{ flex: 1}}>
+      <SafeAreaView style={{ flex: 1}}>
+        <View className='items-center justify-center bg-grey-100'>
+          <Text className='text-7xl text-blue-500 mt-20'>Register</Text>
+          <View className='mt-10'>
+            <Text>Name</Text>
+            <Controller 
+              control={control}
+              name="name"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  mode="outlined"
+                  placeholder="Enter your name"
+                  style={{ width: 300, height: 50 }}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  value={value}
+                  error={!!errors.name}
+                />
+              )}
+            />
+            {errors.name && (
+              <Text style={{ color: 'red' }}>{errors.name.message}</Text>
+            )}
+          </View>
+          <View className='mt-10'>
+            <Text>Email</Text>
+            <Controller
+              control={control}
+              name="email"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  mode="outlined"
+                  placeholder="Enter your email"
+                  style={{ width: 300, height: 50 }}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  value={value}
+                  error={!!errors.email}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+              )}
+            />
+            {errors.email && (
+              <Text style={{ color: 'red' }}>{errors.email.message}</Text>
+            )}
+          </View>
+          <View className='mt-10 mb-8'>
+            <Text>Password</Text>
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  mode="outlined"
+                  placeholder="Enter your password"
+                  secureTextEntry={true}
+                  style={{ width: 300, height: 50 }}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  value={value}
+                  error={!!errors.password}
+                />
+              )}
+            />
+            {errors.password && (
+              <Text style={{ color: 'red' }}>{errors.password.message}</Text>
+            )}
+          </View>
+          <Button 
+            mode='contained'
+            className='w-full'
+            onPress={handleSubmit(onSubmit)}
+          >
+            Register
+          </Button>
+        </View>
+      </SafeAreaView>
+    </SafeAreaProvider>
+  )
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+export default index
+
+const styles = StyleSheet.create({})
