@@ -15,7 +15,7 @@ export default function Login() {
     const router = useRouter();
 
     if (token) {
-        return <Redirect href='/(tabs)'/> // if token exists, redirect to the main app
+        return <Redirect href='/(tabs)'/>
     }
 
     const schema = z.object({
@@ -115,6 +115,15 @@ export default function Login() {
                     className='w-full mt-2 rounded-lg items-center justify-center'
                     onPress={handleSubmit(onSubmit)}
                     >Login</Button>
+                    <Text style={{ color: '#64748b', marginTop: 8 }}>
+                        Don't have an account?{' '}
+                        <Text
+                        style={{ color: '#2563eb', fontWeight: 'bold' }}
+                        onPress={() => router.push('/(auth)/Register')}
+                        >
+                        Register
+                        </Text>
+                    </Text>
                 </View>
             </View>
         </SafeAreaView>
