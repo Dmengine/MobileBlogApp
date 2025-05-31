@@ -11,19 +11,21 @@ import {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, set } from "react-hook-form";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { Cloudinary } from '@cloudinary/url-gen';
+import { upload, UploadApiOptions } from 'cloudinary-react-native';
+
 
 export default function CreateBlog() {
   //   const [title, setTitle] = useState('');
-  //   const [content, setContent] = useState('');
-  //   const [loading, setLoading] = useState(false);
-  const [image, setImage] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [cloudImage, setCloudImage] = useState<string | null>(null);
+    const [image, setImage] = useState<string | null>(null);
 
   const pickImage = async () => {
-    // No permissions request is necessary for launching the image library
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images", "videos"],
       allowsEditing: true,
@@ -31,10 +33,37 @@ export default function CreateBlog() {
       quality: 1,
     });
 
-    console.log(result);
+    // console.log(result);
 
     if (!result.canceled) {
+        const pickedImages = result.assets[0].uri;
       setImage(result.assets[0].uri);
+      const cid = new Cloudinary({
+        cloud: {
+            cloudName: 'dpco2f0zr',
+        },
+        url: {
+            secure: true,
+        },
+      })
+      const options:UploadApiOptions = {
+        upload_preset: "blogApp",
+        unsigned:true,
+      }
+      await upload(cid, {
+        file:pickedImages,
+        options,
+        callback: (error:any, result:any) => {
+            console.log("Upload result:", result);
+            setLoading(false);
+            if(error){
+                Alert.alert("Upload failed", error.message || "Please try again");
+            }else{
+                setCloudImage(result.secure_url);
+                Alert.alert("Image uploaded successfully", "You can now submit your blog post.");
+            }
+        }
+      })
     }
   };
 
@@ -54,36 +83,6 @@ export default function CreateBlog() {
     resolver: zodResolver(schema),
   });
 
-  //   const onSubmit = async () => {
-  //     if (!title.trim() || !content.trim()) {
-  //       Alert.alert('Error', 'Please fill in both fields.');
-  //       return;
-  //     }
-  //     setLoading(true);
-  //     try {
-  //       const response = await fetch('http://192.168.0.115:9000/api/createblog', {
-  //         method: 'POST',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //           Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4MTYxZGYwYTIzNDAzNjlkZTkxNTdjYyIsImlhdCI6MTc0ODQ0MzM2OCwiZXhwIjoxNzQ5MTM0NTY4fQ.ZvtEwp1AkvvORgFP3mWSvBNu5F6MBlh3PzvGqL18x7w',
-  //         },
-  //         body: JSON.stringify({ title, content }),
-  //       });
-  //       const data = await response.json();
-  //       console.log('Create blog response:', data);
-  //       if (data.success) {
-  //         Alert.alert('Success', 'Blog created!');
-  //         setTitle('');
-  //         setContent('');
-  //       } else {
-  //         Alert.alert('Error', data.message || 'Failed to create blog');
-  //       }
-  //     } catch (error) {
-  //       Alert.alert('Error', 'Something went wrong.');
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
   const onSubmit = (blogData: formSchemaType) => {
     console.log("Blog Data:", blogData);
   };
